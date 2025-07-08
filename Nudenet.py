@@ -56,7 +56,7 @@ BLOCK_COUNT_BEHAVIOURS = [
 ]
 
 
-def read_image(img, target_size=320):
+def read_image(img, target_size=640):
     assert isinstance(img, np.ndarray)
 
     img_height, img_width = img.shape[:2]
@@ -163,7 +163,8 @@ def nudenet_execute(
     for i in range(batch_size):
         image = input_images[i].cpu().numpy()
         preprocessed_image, resize_factor, pad_left, pad_top = read_image(
-            image, nudenet_model["input_width"]
+            image,
+            # nudenet_model["input_width"] disable due to nudenet model 640m input_width set to 'height' in string instead of a proper integer
         )
         outputs = nudenet_model["session"].run(
             None, {nudenet_model["input_name"]: preprocessed_image}
