@@ -25,24 +25,22 @@ CENSOR_METHODS = [
 ]
 
 CLASSIDS_LABELS_MAPPING = {
-    0: "FEMALE_GENITALIA_COVERED",
-    1: "FACE_FEMALE",
-    2: "BUTTOCKS_EXPOSED",
-    3: "FEMALE_BREAST_EXPOSED",
-    4: "FEMALE_GENITALIA_EXPOSED",
-    5: "MALE_BREAST_EXPOSED",
-    6: "ANUS_EXPOSED",
-    7: "FEET_EXPOSED",
-    8: "BELLY_COVERED",
-    9: "FEET_COVERED",
-    10: "ARMPITS_COVERED",
-    11: "ARMPITS_EXPOSED",
-    12: "FACE_MALE",
-    13: "BELLY_EXPOSED",
-    14: "MALE_GENITALIA_EXPOSED",
-    15: "ANUS_COVERED",
-    16: "FEMALE_BREAST_COVERED",
-    17: "BUTTOCKS_COVERED",
+    0: "FEMALE_FACE",
+    1: "MALE_FACE",
+    2: "FEMALE_GENITALIA_COVERED",
+    3: "FEMALE_GENITALIA_EXPOSED",
+    4: "BUTTOCKS_COVERED",
+    5: "BUTTOCKS_EXPOSED",
+    6: "FEMALE_BREAST_COVERED",
+    7: "FEMALE_BREAST_EXPOSED",
+    8: "MALE_BREAST_EXPOSED",
+    9: "ARMPITS_EXPOSED",
+    10: "BELLY_EXPOSED",
+    11: "MALE_GENITALIA_EXPOSED",
+    12: "ANUS_EXPOSED",
+    13: "FEET_COVERED",
+    14: "FEET_EXPOSED",
+    15: "EYE",
 }
 
 LABELS_CLASSIDS_MAPPING = labels_classids_mapping = {
@@ -52,7 +50,7 @@ LABELS_CLASSIDS_MAPPING = labels_classids_mapping = {
 BLOCK_COUNT_BEHAVIOURS = [
     "fixed",
     "fewer_when_small",
-    "fewer_when_large"
+    "fewer_when_large",
 ]
 
 
@@ -143,8 +141,12 @@ def nudenet_execute(
 ):
     input_images = input_images.clone()
 
-    assert isinstance(input_images, torch.Tensor), "input_images must be a torch.Tensor but got %s" % type(input_images)
-    assert input_images.dim() == 4, "input_images must be a 4D tensor but got %s" % input_images.dim()
+    assert isinstance(
+        input_images, torch.Tensor
+    ), "input_images must be a torch.Tensor but got %s" % type(input_images)
+    assert input_images.dim() == 4, (
+        "input_images must be a 4D tensor but got %s" % input_images.dim()
+    )
 
     batch_size = input_images.shape[0]
     output_images = []
@@ -152,14 +154,19 @@ def nudenet_execute(
     if censor_method == "image":
         assert overlay_image is not None, "overlay_image must be provided"
         assert alpha_mask is not None, "alpha_mask must be provided"
-        assert isinstance(overlay_image, torch.Tensor), "overlay_image must be a torch.Tensor"
+        assert isinstance(
+            overlay_image, torch.Tensor
+        ), "overlay_image must be a torch.Tensor"
         assert isinstance(alpha_mask, torch.Tensor), "alpha_mask must be a torch.Tensor"
         assert overlay_image.dim() == 4, "overlay_image must be a 4D tensor"
 
         overlay_image = overlay_image[0].cpu().numpy()
-        alpha_mask = alpha_mask.reshape((alpha_mask.shape[-2], alpha_mask.shape[-1])).cpu().numpy()
+        alpha_mask = (
+            alpha_mask.reshape((alpha_mask.shape[-2], alpha_mask.shape[-1]))
+            .cpu()
+            .numpy()
+        )
 
-    
     for i in range(batch_size):
         image = input_images[i].cpu().numpy()
         preprocessed_image, resize_factor, pad_left, pad_top = read_image(
@@ -170,33 +177,35 @@ def nudenet_execute(
         )
         detections = postprocess(outputs, resize_factor, pad_left, pad_top, min_score)
         censored = [d for d in detections if d.get("id") not in filtered_labels]
-    
+
         if block_count_scaling == "fixed":
             scaled_blocks = blocks
-        
-        for d in censored:        
+
+        for d in censored:
             box = d["box"]
             x, y, w, h = box[0], box[1], box[2], box[3]
             area = image[y : y + h, x : x + w]
-            
+
             if block_count_scaling != "fixed":
                 d_pct = max(h / image.shape[:2][0], w / image.shape[:2][1])
                 if block_count_scaling == "fewer_when_large":
-                    scaled_blocks = int(blocks + d_pct * (1 - blocks)) 
-                else: # elif block_count_scaling == "fewer_when_small"
-                    scaled_blocks = int(1 + d_pct * (blocks - 1)) 
-            
+                    scaled_blocks = int(blocks + d_pct * (1 - blocks))
+                else:  # elif block_count_scaling == "fewer_when_small"
+                    scaled_blocks = int(1 + d_pct * (blocks - 1))
+
             if censor_method == "pixelate":
                 image[y : y + h, x : x + w] = pixelate(area, blocks=scaled_blocks)
             elif censor_method == "blur":
-                image[y : y + h, x : x + w] = cv2.blur(area, (scaled_blocks, scaled_blocks))
+                image[y : y + h, x : x + w] = cv2.blur(
+                    area, (scaled_blocks, scaled_blocks)
+                )
             elif censor_method == "gaussian_blur":
                 image[y : y + h, x : x + w] = cv2.GaussianBlur(area, (h, h), 0)
             elif censor_method == "image":
                 pasty = cv2.resize(overlay_image, (w, h))
                 alpha_mask = cv2.resize(alpha_mask, (w, h))
                 image = overlay(image, pasty, alpha_mask, x, y, overlay_strength)
-            
+
         output_images.append(torch.from_numpy(image).unsqueeze(0))
 
     return torch.cat(output_images, dim=0)
@@ -216,7 +225,12 @@ class ApplyNudenet:
                     {"default": 0.2, "min": 0.0, "max": 1.0, "step": 0.01},
                 ),
                 "blocks": ("INT", {"default": 3, "min": 1, "max": 100, "step": 1}),
-                "block_count_scaling": (BLOCK_COUNT_BEHAVIOURS, {"tooltip": "Scale block count by censor area. Only affects pixelate censor."}),
+                "block_count_scaling": (
+                    BLOCK_COUNT_BEHAVIOURS,
+                    {
+                        "tooltip": "Scale block count by censor area. Only affects pixelate censor."
+                    },
+                ),
             },
             "optional": {
                 "overlay_image": ("IMAGE",),
@@ -244,7 +258,7 @@ class ApplyNudenet:
         overlay_image: torch.Tensor = None,
         overlay_strength: float = 1.0,
         alpha_mask: torch.Tensor = None,
-    ):  
+    ):
         output_image = nudenet_execute(
             nudenet_model=nudenet_model,
             input_images=image,

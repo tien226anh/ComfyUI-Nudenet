@@ -4,7 +4,7 @@
 
 Nodes for NSFW content filtering. 
 
-Implementation is base on [notAI-tech/NudeNet](https://github.com/notAI-tech/NudeNet) and [vladmandic/sd-extension-nudenet](https://github.com/vladmandic/sd-extension-nudenet)
+Implementation is base on [notAI-tech/NudeNet](https://github.com/notAI-tech/NudeNet), [vladmandic/sd-extension-nudenet](https://github.com/vladmandic/sd-extension-nudenet), [phuvinh010701/ComfyUI-Nudenet](https://github.com/phuvinh010701/ComfyUI-Nudenet) and model [yolo-07-2025/hs-real-anime-y11s-640-fp32.onnx](https://huggingface.co/Perfectfox256/hotscreen-detection-models/blob/main/yolo-07-2025/hs-real-anime-y11s-640-fp32.onnx) by @PerfectFox265.
 
 
 # Features
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ```
 
 3. Create folder, download models
-Download model from [here](https://d2xl8ijk56kv4u.cloudfront.net/models/nudenet.onnx)
+Download model [hs-real-anime-y11s-640-fp32.onnx](https://huggingface.co/Perfectfox256/hotscreen-detection-models/blob/main/yolo-07-2025/hs-real-anime-y11s-640-fp32.onnx) for this folk. If you plan to use the original ComfyUI-Nudenet version, download model from [here](https://d2xl8ijk56kv4u.cloudfront.net/models/nudenet.onnx).
  and put into models/Nudenet/
 
 # Available Nodes
